@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const path = require('path');
 
 const authRoutes = require('./routes/auth.routes');
 const projectRoutes = require('./routes/project.routes');
@@ -23,10 +24,20 @@ app.use('/api/users', userRoutes);
 // ── Health check ──────────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
-// ── 404 handler ───────────────────────────────────────────────
-app.use((_req, res) => {
-  res.status(404).json({ message: 'Route not found' });
-});
+// ── Serve React frontend in production ───────────────────────
+if (process.env.NODE_ENV === 'production') {
+  const publicDir = path.join(__dirname, '..', 'public');
+  app.use(express.static(publicDir));
+  // All non-API routes → React app (enables client-side routing)
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(publicDir, 'index.html'));
+  });
+} else {
+  // ── 404 handler (dev only) ────────────────────────────────────
+  app.use((_req, res) => {
+    res.status(404).json({ message: 'Route not found' });
+  });
+}
 
 // ── Centralized error handler ─────────────────────────────────
 // eslint-disable-next-line no-unused-vars
